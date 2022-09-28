@@ -1,3 +1,13 @@
+terraform {
+    required_version = ">= 0.12"
+    # Backends -determines how state is loaded/stored -default:local storge
+    backend "s3" {
+      bucket = "tf-myapp-bucket"
+      key = "myapp/state.tfstate"
+      region = "ap-southeast-2" 
+    }
+}
+
 provider "aws" {
     region = "ap-southeast-2"
  }
