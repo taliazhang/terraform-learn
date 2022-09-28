@@ -2,64 +2,33 @@ provider "aws" {
     region = "ap-southeast-2"
  }
 
-resource "aws_vpc" "myapp-vpc" {
-    cidr_block = var.vpc_cidr_block
-    tags = {
-        Name: "${var.env_prefix}-vpc"
-    }
-}
+module "vpc" {
+  source = "terraform-aws-modules/vpc/aws"
 
-module "myapp-subnet"{
-    source = "./modules/subnet"
-    subnet_cidr_block = var.subnet_cidr_block
-    avail_zone = var.avail_zone
-    env_prefix = var.env_prefix
-    vpc_id = aws_vpc.myapp-vpc.id 
-    default_route_table_id = aws_vpc.myapp-vpc.default_route_table_id
+  name = "my-vpc"
+  cidr = var.vpc_cidr_block
+
+  azs             = [var.avail_zone]
+  public_subnets  = [var.subnet_cidr_block]
+  public_subnet_tags = {Name = "${var.env_prefix}-subnet-1"}
+
+  tags = {
+    Name = "${var.env_prefix}-vpc"
+    Environment = "dev"
+  }
 }
 
 module "myapp-webserver"{
     source = "./modules/webserver"
-    vpc_id = aws_vpc.myapp-vpc.id 
+    vpc_id = module.vpc.vpc_id 
     my_ip = var.my_ip
     image_name = var.image_name
     env_prefix = var.env_prefix
     public_key_location = var.public_key_location
     instance_type = var.instance_type
     avail_zone = var.avail_zone
-    subnet_id = module.myapp-subnet.subnet.id
+    subnet_id = module.vpc.public_subnets[0]
 }
-
-
-
-## create a new security group
-# resource "aws_security_group" "myapp-sg" {
-#     name = "myapp-sg"
-#     vpc_id = aws_vpc.myapp-vpc.id 
-#     ingress{
-#         from_port = 22
-#         to_port = 22
-#         protocol = "tcp"
-#         cidr_blocks = [var.my_ip] #who is allowed to access resource on port 22
-#     }
-#     ingress{
-#         from_port = 8080 
-#         to_port = 8080
-#         protocol = "tcp"
-#         cidr_blocks = ["0.0.0.0/0"] 
-#     }
-
-#     egress{
-#         from_port = 0
-#         to_port = 0
-#         protocol = "-1"
-#         cidr_blocks = ["0.0.0.0/0"] 
-#         prefix_list_ids = []
-#     }
-#     tags = {
-#         Name: "${var.env_prefix}-sg"
-#     }
-# }
 
 # resource "aws_route_table" "myapp-route_table" {
 #     vpc_id = aws_vpc.myapp-vpc.id
@@ -76,5 +45,7 @@ module "myapp-webserver"{
 #     subnet_id = aws_subnet.myapp-subnet-1.id
 #     route_table_id = aws_route_table.myapp-route_table.id
 # }
+
+# $touch main.tf 创建文件
 
 # $touch main.tf 创建文件
